@@ -1,64 +1,150 @@
-import { Component } from "react";
 import "./DisplayTime.scss";
-import PropTypes from "prop-types";
+import { useInterval } from "../../../utils/hooks";
+import { useEffect, useContext, useCallback } from "react";
+import { TimerContext } from "../../../context/TimerProvider";
+import { formatTime } from "../../../utils/helpers";
+import Message from "../Message";
 
-/* 
-  This component, at this stage, is the same for all timers.
-  It starts ticking when it is mounted.
-*/
+const DisplayTime = () => {
+  // Get Timer Context
+  const {
+    selectedTimer,
+    isRunning,
+    setIsRunning,
+    setIsFinished,
+    secElapsed,
+    setSecElapsed,
+    stopTime,
+    xyStartTime,
+    currentXYRound,
+    setCurrentXYRound,
+    totalXYRounds,
+    tabataStartTime,
+    currentTabataRound,
+    setCurrentTabataRound,
+    totalTabataRounds,
+    setMessage,
+    restElapsed,
+    setRestElapsed,
+    isResting,
+    setIsResting,
+    restTime,
+    isFinished,
+    setIsRestPhase,
+    isRestPhase,
+    message,
+  } = useContext(TimerContext);
 
-class DisplayTime extends Component {
-  state = {
-    timeStart: 0,
-    timeElapsed: "00:00:00",
+  const finish = useCallback(() => {
+    setIsRunning(false);
+    setIsResting(false);
+    setIsRestPhase(false);
+    setIsFinished(true);
+    setMessage("You made it to the end!");
+  }, [setIsRunning, setIsFinished, setMessage, setIsResting, setIsRestPhase]);
+
+  // Checks for finish condition, or moves to next phase based on timer
+  useEffect(() => {
+    if (
+      (selectedTimer === "Stopwatch" && secElapsed === stopTime) ||
+      (selectedTimer === "Countdown" && secElapsed === 0)
+    ) {
+      finish();
+    }
+
+    if (selectedTimer === "XY" && secElapsed === 0) {
+      if (currentXYRound === totalXYRounds) {
+        finish();
+      } else {
+        setSecElapsed(xyStartTime);
+        setCurrentXYRound(currentXYRound + 1);
+      }
+    }
+
+    if (selectedTimer === "Tabata" && secElapsed === 0) {
+      if (!isRestPhase && !isFinished) {
+        setIsResting(true);
+        setIsRestPhase(true);
+        setIsRunning(false);
+      } else if ((isRestPhase || isFinished) && restElapsed === 0) {
+        if (currentTabataRound === totalTabataRounds) {
+          finish();
+        } else {
+          setRestElapsed(restTime);
+          setSecElapsed(tabataStartTime);
+          setIsResting(false);
+          setIsRestPhase(false);
+          setIsRunning(true);
+          setCurrentTabataRound(currentTabataRound + 1);
+        }
+      }
+    }
+  }, [
+    secElapsed,
+    stopTime,
+    xyStartTime,
+    selectedTimer,
+    currentXYRound,
+    totalXYRounds,
+    setCurrentXYRound,
+    setSecElapsed,
+    currentTabataRound,
+    setCurrentTabataRound,
+    tabataStartTime,
+    totalTabataRounds,
+    isResting,
+    restElapsed,
+    restTime,
+    setIsResting,
+    setIsRunning,
+    setRestElapsed,
+    isFinished,
+    setIsRestPhase,
+    isRestPhase,
+    finish,
+  ]);
+
+  // Default interval for timer ticking
+  useInterval(
+    () => {
+      selectedTimer === "Stopwatch"
+        ? setSecElapsed(secElapsed + 1)
+        : setSecElapsed(secElapsed - 1);
+    },
+    isRunning && !isResting ? 1000 : null
+  );
+
+  // Interval for Tabata resting
+  useInterval(
+    () => {
+      setRestElapsed(restElapsed - 1);
+    },
+    isResting && !isRunning ? 1000 : null
+  );
+
+  // Additional status message for XY/Tabata
+  const displayMessage = () => {
+    if (selectedTimer === "XY") return "Round: " + currentXYRound;
+    if (selectedTimer === "Tabata") {
+      if (isRestPhase || isFinished)
+        return "Rest - Round: " + currentTabataRound;
+      if (!isRestPhase && !isFinished)
+        return "Work - Round: " + currentTabataRound;
+    }
+    return "";
   };
 
-  componentDidMount() {
-    this.handleStart();
-  }
-
-  componentWillUnmount() {
-    clearInterval(this.timerID);
-  }
-
-  formatTime(date1, date2) {
-    let difference = date1 - date2;
-
-    let h = Math.floor(difference / 1000 / 60 / 60);
-    difference -= h * 1000 * 60 * 60;
-
-    let m = Math.floor(difference / 1000 / 60);
-    difference -= m * 1000 * 60;
-
-    let s = Math.floor(difference / 1000);
-
-    h = h < 10 ? `0${h}` : h;
-    m = m < 10 ? `0${m}` : m;
-    s = s < 10 ? `0${s}` : s;
-    return `${h}:${m}:${s}`;
-  }
-
-  handleStart() {
-    this.setState({ timeStart: Date.now() });
-
-    this.timerID = setInterval(() => {
-      this.setState({
-        timeElapsed: this.formatTime(Date.now(), this.state.timeStart),
-      });
-    }, 1000);
-  }
-
-  render() {
-    return (
-      <div className="circle">
-        <div className="time">{this.state.timeElapsed}</div>
+  return (
+    <div className="circle">
+      <Message delay={3000} value={message} />
+      <div className="time">
+        {selectedTimer === "Tabata" && isRestPhase
+          ? formatTime(restElapsed)
+          : formatTime(secElapsed)}
       </div>
-    );
-  }
-}
-
-DisplayTime.propTypes = {
-  type: PropTypes.string,
+      <Message value={displayMessage} />
+    </div>
+  );
 };
 
 export default DisplayTime;

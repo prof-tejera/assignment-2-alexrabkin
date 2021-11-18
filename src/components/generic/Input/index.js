@@ -1,20 +1,18 @@
-import { Component } from "react";
 import PropTypes from "prop-types";
 import "./Input.scss";
 
-class Input extends Component {
-  render() {
-    return (
-      <>
-        <label>{this.props.label}</label>
-        <input
-          placeholder={this.props.placeholder}
-          onChange={(e) => this.props.onChange(e.target.value)}
-        />
-      </>
-    );
-  }
-}
+const Input = ({ label, placeholder, value, onChange }) => {
+  return (
+    <>
+      <label>{label}</label>
+      <input
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </>
+  );
+};
 
 Input.propTypes = {
   label: PropTypes.string,

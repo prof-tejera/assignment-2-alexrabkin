@@ -1,8 +1,8 @@
-import React from "react";
+import { useRef, useState, useContext, useEffect, useCallback } from "react";
 import Button from "../../generic/Button";
 import Form from "../../generic/Form";
 import DisplayTime from "../../generic/DisplayTime";
-import PropTypes from "prop-types";
+import { TimerContext } from "../../../context/TimerProvider";
 import "./Timer.scss";
 
 // Import React Transition Group
@@ -12,92 +12,182 @@ import { CSSTransition } from "react-transition-group";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCog } from "@fortawesome/free-solid-svg-icons";
 
-class Timer extends React.Component {
-  constructor(props) {
-    super(props);
-    // Used for CSSTransition
-    this.nodeRef = React.createRef();
-  }
+const Timer = () => {
+  // Get Timer Context
+  const {
+    selectedTimer,
+    isRunning,
+    setIsRunning,
+    setSecElapsed,
+    isFinished,
+    setIsFinished,
+    setMessage,
+    stopTime,
+    countdownStartTime,
+    xyStartTime,
+    tabataStartTime,
+    setCurrentXYRound,
+    totalXYRounds,
+    setCurrentTabataRound,
+    totalTabataRounds,
+    setRestElapsed,
+    restTime,
+    setIsResting,
+    isResting,
+    setIsRestPhase,
+    isRestPhase,
+  } = useContext(TimerContext);
 
-  state = {
-    // currently timer is ticking by default
-    isTicking: true,
-    showTimer: true,
-    showForm: false,
+  const [showTimer, setShowTimer] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const nodeRef = useRef();
+
+  // Performs timer cleanup
+  const cleanBeforeStart = useCallback(() => {
+    if (selectedTimer === "Stopwatch") setSecElapsed(0);
+    if (selectedTimer === "Countdown") setSecElapsed(countdownStartTime);
+    if (selectedTimer === "XY") {
+      setSecElapsed(xyStartTime);
+      setCurrentXYRound(1);
+    }
+    if (selectedTimer === "Tabata") {
+      setSecElapsed(tabataStartTime);
+      setRestElapsed(restTime);
+      setCurrentTabataRound(1);
+    }
+    setIsFinished(false);
+    setIsRunning(false);
+    setIsResting(false);
+    setIsRestPhase(false);
+  }, [
+    selectedTimer,
+    setIsFinished,
+    setSecElapsed,
+    countdownStartTime,
+    xyStartTime,
+    tabataStartTime,
+    setIsRunning,
+    setCurrentXYRound,
+    setCurrentTabataRound,
+    restTime,
+    setRestElapsed,
+    setIsResting,
+    setIsRestPhase,
+  ]);
+
+  useEffect(() => {
+    cleanBeforeStart();
+  }, [selectedTimer, cleanBeforeStart]);
+
+  useEffect(() => {
+    setMessage("");
+  }, [selectedTimer, setMessage]);
+
+  const handleStart = () => {
+    if (isFinished) {
+      cleanBeforeStart();
+    }
+    setMessage("Go!");
+    selectedTimer === "Tabata" && isRestPhase
+      ? setIsResting(true)
+      : setIsRunning(true);
   };
 
-  // Will refactor using hooks in the next assignment
-  showTimer = (showTimer) => {
-    this.setState({ showTimer: showTimer });
+  const handlePause = () => {
+    selectedTimer === "Tabata" && isRestPhase
+      ? setIsResting(false)
+      : setIsRunning(false);
+    setMessage("Taking a break...");
   };
 
-  showForm = (showForm) => {
-    this.setState({ showForm: showForm });
+  const handleReset = () => {
+    cleanBeforeStart();
+    setMessage("Timer reset.");
   };
 
-  render() {
-    return (
-      <div className="panel">
-        {this.state.showTimer && (
-          <>
-            <Button
-              className="settings-btn"
-              text={
-                <FontAwesomeIcon
-                  className="settings-icon"
-                  icon={faCog}
-                  onClick={() => this.showForm(true)}
-                />
-              }
-            />
-            <div className="timer-container">
-              <h1>{this.props.type}</h1>
-              <DisplayTime />
-              <div className="button-group">
-                {!this.state.isTicking && (
+  const handleFinish = () => {
+    if (selectedTimer === "Stopwatch") setSecElapsed(stopTime);
+    if (selectedTimer === "Countdown") setSecElapsed(0);
+    if (selectedTimer === "XY") {
+      setSecElapsed(0);
+      setCurrentXYRound(totalXYRounds);
+    }
+    if (selectedTimer === "Tabata") {
+      setSecElapsed(0);
+      setCurrentTabataRound(totalTabataRounds);
+      setRestElapsed(0);
+      setIsResting(false);
+    }
+    setIsRunning(false);
+    setIsFinished(true);
+  };
+
+  return (
+    <div className="panel">
+      {showTimer && (
+        <>
+          <Button
+            className="settings-btn"
+            text={
+              <FontAwesomeIcon
+                className="settings-icon"
+                icon={faCog}
+                onClick={() => setShowForm(true)}
+              />
+            }
+          />
+          <div className="timer-container">
+            <h1>{selectedTimer}</h1>
+            <DisplayTime />
+            <div className="button-group">
+              {((!isRunning && !isResting) || isFinished) && (
+                <>
                   <Button
                     className="start-btn"
-                    onClick={() => console.log("Click Start")}
-                    text="Start"
+                    onClick={() => handleStart()}
+                    text="Go"
                   />
-                )}
-                {this.state.isTicking && (
+                  <Button
+                    className="round-btn"
+                    onClick={() => handleReset()}
+                    text="Reset"
+                  />
+                </>
+              )}
+              {(isRunning || isResting) && !isFinished && (
+                <>
                   <Button
                     className="start-btn"
-                    onClick={() => console.log("Click Pause")}
+                    onClick={() => handlePause()}
                     text="Pause"
                   />
-                )}
-                <Button
-                  className="round-btn"
-                  onClick={() => console.log("Click Reset")}
-                  text="Reset"
-                />
-              </div>
+                  <Button
+                    className="round-btn"
+                    onClick={() => handleFinish()}
+                    text="Finish"
+                  />
+                </>
+              )}
             </div>
-          </>
-        )}
-
-        <CSSTransition
-          in={this.state.showForm}
-          nodeRef={this.nodeRef}
-          timeout={300}
-          classNames="form"
-          unmountOnExit
-          onEnter={() => this.showTimer(false)}
-          onExited={() => this.showTimer(true)}
-        >
-          <div ref={this.nodeRef}>
-            <Form type={this.props.type} onSave={() => this.showForm(false)} />
           </div>
-        </CSSTransition>
-      </div>
-    );
-  }
-}
+        </>
+      )}
 
-Timer.propTypes = {
-  type: PropTypes.string.isRequired,
+      <CSSTransition
+        in={showForm}
+        nodeRef={nodeRef}
+        timeout={300}
+        classNames="form"
+        unmountOnExit
+        onEnter={() => setShowTimer(false)}
+        onExited={() => setShowTimer(true)}
+      >
+        <div ref={nodeRef}>
+          <Form onSubmit={() => setShowForm(false)} />
+        </div>
+      </CSSTransition>
+    </div>
+  );
 };
 
 export default Timer;

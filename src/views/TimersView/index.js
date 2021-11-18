@@ -1,54 +1,35 @@
-import { Component } from "react";
+import { useContext } from "react";
 
 import Button from "../../components/generic/Button";
-import Stopwatch from "../../components/timers/Stopwatch";
-import Countdown from "../../components/timers/Countdown";
-import XY from "../../components/timers/XY";
-import Tabata from "../../components/timers/Tabata";
+import Timer from "../../components/generic/Timer";
+import { TimerContext } from "../../context/TimerProvider";
 import "./TimersView.scss";
 
-class TimersView extends Component {
-  state = {
-    timerSelected: "Stopwatch",
-  };
+const TimersView = () => {
+  const { timers, selectedTimer, setSelectedTimer } = useContext(TimerContext);
 
-  handleSelect = (timer) => {
-    this.setState({ timerSelected: timer });
-  };
+  // Return selected timer
+  const timer = timers.find((t) => t.title === selectedTimer);
 
-  render() {
-    const timers = [
-      { title: "Stopwatch" },
-      { title: "Countdown" },
-      { title: "XY" },
-      { title: "Tabata" },
-    ];
-
-    return (
-      <div className="timers-view">
-        <div className="timer-select">
-          {timers.map((timer) => (
-            <Button
-              className={
-                timer.title === this.state.timerSelected
-                  ? "timer-selected-btn"
-                  : "timer-select-btn"
-              }
-              key={timer.title}
-              onClick={() => this.handleSelect(timer.title)}
-              text={timer.title}
-            />
-          ))}
-        </div>
-        <div>
-          {this.state.timerSelected === "Stopwatch" && <Stopwatch />}
-          {this.state.timerSelected === "Countdown" && <Countdown />}
-          {this.state.timerSelected === "XY" && <XY />}
-          {this.state.timerSelected === "Tabata" && <Tabata />}
-        </div>
+  return (
+    <div className="timers-view">
+      <div className="timer-select">
+        {timers.map((timer) => (
+          <Button
+            className={
+              timer.title === selectedTimer
+                ? "timer-selected-btn"
+                : "timer-select-btn"
+            }
+            key={timer.title}
+            onClick={() => setSelectedTimer(timer.title)}
+            text={timer.title}
+          />
+        ))}
       </div>
-    );
-  }
-}
+      <div>{timer && <Timer />}</div>
+    </div>
+  );
+};
 
 export default TimersView;
