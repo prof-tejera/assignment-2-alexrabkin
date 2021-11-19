@@ -136,7 +136,7 @@ const DisplayTime = () => {
 
   return (
     <div className="circle">
-      <Message delay={3000} value={message} />
+      <Message delay={5000} value={message} />
       <div className="time">
         {selectedTimer === "Tabata" && isRestPhase
           ? formatTime(restElapsed)
